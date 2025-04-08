@@ -1,30 +1,47 @@
+"""Logging client module to load configuration and setup local + remote logging via ZeroMQ."""
+
+from typing import Any, Dict
+
 import toml
 import zmq
 from loguru import logger
 
-def load_config(config_path="logging_config.toml"):
+
+def load_config(config_path: str = "logging_config.toml") -> Dict[str, Any]:
+    """Load the logging configuration from a TOML file.
+
+    Args:
+        config_path (str): Path to the TOML config file. Defaults to 'logging_config.toml'.
+
+    Returns:
+        dict: Logging configuration dictionary from the [logging] section.
+
+    """
     try:
         config = toml.load(config_path)
-        # Access the [logging] section of the config
         return config.get("logging", {})
     except Exception as e:
         logger.error(f"Failed to load config file {config_path}: {e}")
         raise
 
-def setup_logger(config_path="logging_config.toml"):
+
+def setup_logger(config_path: str = "logging_config.toml") -> None:
+    """Set up the logger with both local file logging and remote ZeroMQ forwarding.
+
+    Args:
+        config_path (str): Path to the TOML config file. Defaults to 'logging_config.toml'.
+
+    """
     config = load_config(config_path)
-    
-    # Remove the default logger configuration
+
     logger.remove()
 
-    # Get the logging configurations with fallback default values
-    log_file_name = config.get("log_file_name", "default.log")  # Fallback to "default.log"
-    min_log_level = config.get("min_log_level", "INFO")  # Default to "INFO"
-    log_rotation = config.get("log_rotation", "1 week")  # Default to rotate logs weekly
-    log_compression = config.get("log_compression", "zip")  # Default to "zip"
-    logging_server_port_no = config.get("logging_server_port_no", 9000)  # Default to port 9000
+    log_file_name = config.get("log_file_name", "default.log")
+    min_log_level = config.get("min_log_level", "INFO")
+    log_rotation = config.get("log_rotation", "1 week")
+    log_compression = config.get("log_compression", "zip")
+    logging_server_port_no = config.get("logging_server_port_no", 9000)
 
-    # Set up local log file writing
     logger.add(
         log_file_name,
         level=min_log_level,
@@ -35,27 +52,32 @@ def setup_logger(config_path="logging_config.toml"):
         diagnose=True,
     )
 
-    logger.info(f"Logger set up: File - {log_file_name}, Level - {min_log_level}, Rotation - {log_rotation}, Compression - {log_compression}")
+    logger.info(
+        f"Logger set up: File - {log_file_name}, Level - {min_log_level}, "
+        f"Rotation - {log_rotation}, Compression - {log_compression}",
+    )
 
-    # Forward to remote log server using ZeroMQ
     context = zmq.Context()
     socket = context.socket(zmq.PUSH)
-    socket.connect(f"tcp://localhost:{logging_server_port_no}")  # Use the configured port
+    socket.connect(f"tcp://localhost:{logging_server_port_no}")
 
-    def zmq_forward(message):
+    def zmq_forward(message: str) -> None:
+        """Forward a log message to a ZeroMQ socket.
+
+        Args:
+            message (str): Log message to forward.
+
+        """
         try:
             socket.send_string(message)
         except Exception as e:
             logger.error(f"Failed to forward message via ZMQ: {e}")
-
     class ZMQSink:
-        def write(self, message):
+        def write(self, message: str) -> None:
             if message.strip():
                 zmq_forward(message)
-
-        def flush(self):
+        def flush(self) -> None:
             pass
-
     # Add ZMQ sink for remote logging
     logger.add(ZMQSink(), level=min_log_level)
 
