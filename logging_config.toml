@@ -1,0 +1,6 @@
+[logging]
+log_file_name = "logs/travel_assistant.log"
+log_rotation = "00:00"
+log_compression = "zip"
+min_log_level = "DEBUG"
+logging_server_port_no = 9000

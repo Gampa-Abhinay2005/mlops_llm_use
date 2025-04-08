@@ -1,0 +1,25 @@
+features:
+  enable_weather: true
+  enable_dummy_flights: true
+  enable_dummy_hotels: true
+  enable_attractions: true
+  enable_map: true
+
+ui:
+  title: "Smart Travel Assistant"
+  theme: "light"
+
+
+
+weather_api:
+  key: "1eabd2a5eb938cd031880dcd7904fa45"
+
+rapidapi:
+  key: "087e5b4659msh718842cea6f9fa0p1aab60jsne5f8ee3e4756"
+
+geoapify:
+  key: "f1253c87d2554289834ca1d3b3382c1e"
+
+customization:
+  default_city: "Delhi"
+  enable_dummy_data: true

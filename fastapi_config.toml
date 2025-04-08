@@ -1,0 +1,3 @@
+[fastapi]
+port_no = 8000
+number_of_workers = 2
