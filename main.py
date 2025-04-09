@@ -144,10 +144,10 @@ DUMMY_DATA = {
 }
 
 @app.get("/dummy/flights")
-async def get_dummy_flights(from_code: str, to_code: str, date: str):
+async def get_dummy_flights(from_code: str, to_code: str):
     """Retrieve dummy flight data for a given route and date."""
     route = f"{from_code}-{to_code}"
-    logger.info(f"Fetching dummy flights for route: {route} on {date}")
+    logger.info(f"Fetching dummy flights for route: {route} ")
     if route in DUMMY_DATA["flights"]:
         logger.info(f"Flights found for route: {route}")
         return DUMMY_DATA["flights"][route]

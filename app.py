@@ -119,19 +119,16 @@ if st.session_state.selected_city:
     cities = list(airport_codes.keys())
     source_display = st.selectbox("Select your departure city:", cities)
     source_code = airport_codes[source_display]
-    default_date = datetime.now(timezone.utc).date()
-    travel_date = st.date_input("Select travel date:", default_date)
     if st.button("Search Flights"):
         logger.info(
             "Searching flights: from %s to %s on %s",
             source_display,
             selected_city_display,
-            travel_date,
         )
         with st.spinner("Searching for flights..."):
             try:
                 flights_resp = requests.get(
-                    f"http://127.0.0.1:8000/dummy/flights?from_code={source_code}&to_code={selected_city_code}&date={travel_date}",
+                    f"http://127.0.0.1:8000/dummy/flights?from_code={source_code}&to_code={selected_city_code}",
                 timeout=5).json()
 
                 if isinstance(flights_resp, list) and flights_resp:

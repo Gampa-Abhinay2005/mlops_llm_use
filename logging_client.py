@@ -1,17 +1,17 @@
 """Logging client module to load configuration and setup local + remote logging via ZeroMQ."""
 
-from typing import Any, Dict
+from typing import Any
 
 import toml
 import zmq
 from loguru import logger
 
 
-def load_config(config_path: str = "logging_config.toml") -> Dict[str, Any]:
+def load_config(config_path: str = "logging_config.toml") -> dict[str, Any]:
     """Load the logging configuration from a TOML file.
 
     Args:
-        config_path (str): Path to the TOML config file. Defaults to 'logging_config.toml'.
+        config_path : Path to the TOML config file. Defaults to 'logging_config.toml'.
 
     Returns:
         dict: Logging configuration dictionary from the [logging] section.
@@ -26,10 +26,10 @@ def load_config(config_path: str = "logging_config.toml") -> Dict[str, Any]:
 
 
 def setup_logger(config_path: str = "logging_config.toml") -> None:
-    """Set up the logger with both local file logging and remote ZeroMQ forwarding.
+    """Set up the logger with local file logging and remote ZeroMQ forwarding.
 
     Args:
-        config_path (str): Path to the TOML config file. Defaults to 'logging_config.toml'.
+        config_path: Path to the TOML config file. Defaults to 'logging_config.toml'.
 
     """
     config = load_config(config_path)
