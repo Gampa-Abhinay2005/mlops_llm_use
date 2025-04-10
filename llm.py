@@ -19,7 +19,6 @@ llm = Ollama(
     top_p=0.95,
     top_k=40,
     repeat_penalty=1.1,
-    num_predict=256,
 )
 
 def ask_travel_assistant(question: str) -> str:
