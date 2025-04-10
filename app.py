@@ -5,7 +5,6 @@ functionality using various APIs and a chatbot interface.
 """
 
 import logging
-from datetime import datetime, timezone
 
 import folium
 import requests

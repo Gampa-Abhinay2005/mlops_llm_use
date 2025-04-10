@@ -1,4 +1,4 @@
-"""Logging client module to load configuration and setup local + remote logging via ZeroMQ."""
+"""Logging client module to load configuration and setup logging via ZeroMQ."""
 
 from typing import Any
 
@@ -26,7 +26,7 @@ def load_config(config_path: str = "logging_config.toml") -> dict[str, Any]:
 
 
 def setup_logger(config_path: str = "logging_config.toml") -> None:
-    """Set up the logger with local file logging and remote ZeroMQ forwarding.
+    """Set up logger file logging and remote ZeroMQ forwarding.
 
     Args:
         config_path: Path to the TOML config file. Defaults to 'logging_config.toml'.

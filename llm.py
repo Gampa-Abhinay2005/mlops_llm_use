@@ -1,152 +1,197 @@
-"""
-Module for interacting with the AI Travel Assistant.
+"""LangChain-Ollama Agent for AI Travel Assistant.
 
-Uses the Ollama language model with LangChain agent tools to handle natural language queries,
-fetching data from your FastAPI endpoints for weather, hotels, flights, and attractions.
+Fetches weather, hotel, flight, and attraction info from FastAPI endpoints,
+and responds to natural language queries using Ollama LLM.
 """
+
+from __future__ import annotations
 
 import httpx
 import requests
-from langchain_ollama import OllamaLLM
+from langchain.agents import AgentType, Tool, initialize_agent
 from langchain_core.exceptions import OutputParserException
-from langchain.agents import initialize_agent, Tool, AgentType
+from langchain_ollama import OllamaLLM
 from loguru import logger
+
 from logging_client import setup_logger
 
 setup_logger()
 
-# Initialize the LLM with your model and parameters
+MAX_FLIGHT_PARTS = 2
+
+# Initialize the LLM
 llm = OllamaLLM(
     model="llama3",
     temperature=0.3,
     top_p=0.95,
     top_k=40,
     repeat_penalty=1.1,
-    num_predict=100,
 )
 
 # -------------------------------
-# Functions to fetch data from FastAPI endpoints
+# FastAPI Fetch Functions
 
 def fetch_weather(city: str) -> str:
-    """Fetch current weather data from the FastAPI endpoint."""
+    """Fetch weather from FastAPI endpoint."""
     try:
-        response = requests.get(f"http://127.0.0.1:8000/weather?city={city}", timeout=5)
-        data = response.json()
+        resp = requests.get(
+            f"http://127.0.0.1:8000/weather?city={city}", timeout=5,
+        )
+        data = resp.json()
         if "main" in data:
             temp = data["main"]["temp"]
-            condition = data["weather"][0]["description"]
-            return f"Weather in {city}: {temp}°C, {condition}."
-        else:
-            return f"Weather data not available for {city}."
-    except Exception as e:
-        return f"Error fetching weather: {e}"
+            desc = data["weather"][0]["description"]
+            return f"Weather in {city}: {temp}°C, {desc}."
+        return f"Weather data not available for {city}."
+    except requests.RequestException as err:
+        return f"Error fetching weather: {err}"
 
 def fetch_hotels(city: str) -> str:
-    """Fetch dummy hotel data from the FastAPI endpoint."""
+    """Fetch hotels from FastAPI endpoint."""
     try:
-        response = requests.get(f"http://127.0.0.1:8000/dummy/hotels?city={city}", timeout=5)
-        data = response.json()
-        if "data" in data and data["data"]:
+        code = city.strip().upper()
+        resp = requests.get(
+            f"http://127.0.0.1:8000/dummy/hotels?city={code}", timeout=5,
+        )
+        data = resp.json()
+        if data.get("data"):
             hotels = data["data"]
-            hotels_list = ", ".join([f"{h['name']} ({h['price']})" for h in hotels])
-            return f"Hotels in {city}: {hotels_list}."
-        else:
-            return f"No hotels available for {city}."
-    except Exception as e:
-        return f"Error fetching hotels: {e}"
+            summary = ", ".join(
+                f"{h['name']} ({h['price']})" for h in hotels
+            )
+            return f"Hotels in {code}: {summary}."
+        return f"[END] No hotels found in {code}."
+    except requests.RequestException as err:
+        return f"Error fetching hotels: {err}"
 
 def fetch_flights(query: str) -> str:
-    """Fetch dummy flight data from the FastAPI endpoint.
-    
-    Expected input format: "from_city to to_city"
+    """Fetch flights from FastAPI endpoint.
+
+    Input should be in 'FROM to TO' format.
     """
     try:
-        parts = [s.strip() for s in query.split(" to ")]
+        query = query.strip("'\"")  # <- Strip quotes around the string
+        parts = [s.strip().upper() for s in query.split(" to ")]
         if len(parts) != 2:
-            return "Please provide flight query in the format 'from_city to to_city'."
-        from_city, to_city = parts
-        response = requests.get(
-            f"http://127.0.0.1:8000/dummy/flights?from_code={from_city}&to_code={to_city}",
-            timeout=5,
+            return (
+                "Please provide flight query in the format "
+                "'from_code to to_code'. Example: DEL to BOM."
+            )
+
+        from_code, to_code = parts
+        url = (
+            f"http://127.0.0.1:8000/dummy/flights?"
+            f"from_code={from_code}&to_code={to_code}"
         )
+        response = requests.get(url, timeout=5)
         data = response.json()
+
         if isinstance(data, list) and data:
             flights_str = ""
             for flight in data:
                 flights_str += (
-                    f"{flight['airline']} flight {flight['flight']} departs at {flight['departure']} "
-                    f"and arrives at {flight['arrival']}. Price: {flight['price']}\n"
+                    f"{flight['airline']} flight {flight['flight']} departs at "
+                    f"{flight['departure']} and arrives at {flight['arrival']}. "
+                    f"Price: {flight['price']}\n"
                 )
             return flights_str.strip()
-        else:
-            return f"No flights found from {from_city} to {to_city}."
-    except Exception as e:
-        return f"Error fetching flights: {e}"
+
+        return f"No flights found from {from_code} to {to_code}."
+    except requests.RequestException as err:
+        return f"Error fetching flights: {err}"
 
 def fetch_attractions(city: str) -> str:
-    """Fetch attractions data from the FastAPI endpoint."""
+    """Fetch tourist attractions from FastAPI endpoint."""
     try:
-        response = requests.get(f"http://127.0.0.1:8000/attractions/?city={city}", timeout=5)
-        data = response.json()
-        if "attractions" in data and data["attractions"]:
-            attractions_list = ", ".join(data["attractions"])
-            return f"Attractions in {city}: {attractions_list}."
-        else:
-            return f"No attractions found for {city}."
-    except Exception as e:
-        return f"Error fetching attractions: {e}"
+        resp = requests.get(
+            f"http://127.0.0.1:8000/attractions/?city={city}", timeout=5,
+        )
+        data = resp.json()
+        if data.get("attractions"):
+            places = ", ".join(data["attractions"])
+            return f"Attractions in {city}: {places}."
+        return f"No attractions found for {city}."
+    except requests.RequestException as err:
+        return f"Error fetching attractions: {err}"
 
 # -------------------------------
-# Define LangChain Tools to connect these functions
+# Tool Definitions and Matching
 
 tools = [
     Tool.from_function(
         func=fetch_weather,
         name="Weather",
-        description="Get current weather for a city. Input should be the city name."
+        description="Get current weather for a city. Input = city name.",
     ),
     Tool.from_function(
         func=fetch_hotels,
         name="Hotels",
-        description="Get available hotels in a city. Input should be the city name."
+        description="Get hotels in a city. Input = city name.",
     ),
     Tool.from_function(
         func=fetch_flights,
         name="Flights",
-        description="Get flight information. Input should be in the format 'from_city to to_city'."
+        description=(
+            "Get flights between cities. Input = 'FROM to TO', "
+            "e.g., 'DEL to BOM'."
+        ),
     ),
     Tool.from_function(
         func=fetch_attractions,
         name="Attractions",
-        description="Get tourist attractions in a city. Input should be the city name."
+        description="Get tourist attractions. Input = city name.",
     ),
 ]
 
-# Create the agent with the tools and LLM
+TOOL_KEYWORDS = {
+    "Weather": ["weather", "climate", "temperature"],
+    "Hotels": ["hotel", "hotels", "stay", "lodging", "accommodation"],
+    "Flights": ["flight", "flights", "airline", "depart", "arrival", "plane"],
+    "Attractions": [
+        "attractions", "places", "sightseeing", "spots", "visit",
+        "monuments", "tourist",
+    ],
+}
+
 agent = initialize_agent(
     tools=tools,
     llm=llm,
     agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-    verbose=True
+    verbose=True,
+    return_intermediate_steps=True,
+    max_iterations=2,
 )
 
+def detect_tool(question: str) -> str | None:
+    """Detect tool based on fuzzy keyword matching."""
+    q = question.lower()
+    for name, kws in TOOL_KEYWORDS.items():
+        if any(kw in q for kw in kws):
+            return name
+    return None
+
+# -------------------------------
+# Core Travel Assistant Logic
 
 def ask_travel_assistant(question: str) -> str:
-    """Process a user question using the LLM-based travel assistant with integrated tools.
-
-    If the question contains keywords related to travel data, the agent will use the tools
-    to fetch real data from your APIs. Otherwise, it falls back to a direct LLM response.
-    """
+    """Answer travel questions using LLM and LangChain tools."""
     try:
-        logger.info(f"Received question: {question}")
-        keywords = ["weather", "hotel", "flight", "attraction", "attractions"]
-        if any(word in question.lower() for word in keywords):
-            response = agent.run(question)
-        else:
-            response = llm.invoke(question)
-        logger.info(f"Response: {response}")
-        return response
-    except (httpx.RequestError, OutputParserException) as e:
-        logger.exception("Error while invoking travel assistant")
-        return "Sorry, an error occurred while processing your request."
+        logger.info(f"Question: {question}")
+        tool = detect_tool(question)
+
+        if tool:
+            result = agent.invoke({"input": question}, return_intermediate_steps=True)
+            steps = result.get("intermediate_steps", [])
+            if steps:
+                action, observation = steps[0]
+                logger.info(f"Used: {action.tool}, Observation: {observation}")
+                return observation
+            return result.get("output", "Sorry, no result found.")
+
+        reply = llm.invoke(question)
+        logger.info(f"LLM Reply: {reply}")
+        return reply
+
+    except (httpx.RequestError, OutputParserException, Exception):
+        logger.exception("Error in travel assistant.")
+        return "Sorry, something went wrong answering your query."
