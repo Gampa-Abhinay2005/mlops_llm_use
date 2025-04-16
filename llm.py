@@ -34,6 +34,7 @@ llm = OllamaLLM(
 def fetch_weather(city: str) -> str:
     """Fetch weather from FastAPI endpoint."""
     try:
+        city=city[1:-1]
         resp = requests.get(
             f"http://127.0.0.1:8000/weather?city={city}", timeout=5,
         )
@@ -170,8 +171,6 @@ def detect_tool(question: str) -> str | None:
             return name
     return None
 
-# -------------------------------
-# Core Travel Assistant Logic
 
 def ask_travel_assistant(question: str) -> str:
     """Answer travel questions using LLM and LangChain tools."""

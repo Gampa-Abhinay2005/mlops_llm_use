@@ -24,7 +24,7 @@ logging.basicConfig(
 )
 
 st.set_page_config(page_title="AI Travel Assistant", layout="centered")
-st.title("🌍 AI Travel Assistant")
+st.title("AI Travel Assistant")
 
 # --- AI Assistant Section ---
 user_input = st.text_input("Ask me anything about your trip:")
@@ -52,6 +52,8 @@ airport_codes = {
     "Mumbai (BOM)": "BOM",
     "Sydney (SYD)": "SYD",
     "Los Angeles (LAX)": "LAX",
+    "palakkad (PGD)": "Palakkad",
+    "Kochi (COK)": "Kochi",
 }
 
 for key in [

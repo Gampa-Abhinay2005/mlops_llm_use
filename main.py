@@ -123,6 +123,11 @@ DUMMY_DATA = {
         ],
     },
     "hotels": {
+        "DELHI": [
+            {"name": "The Leela Palace New Delhi", "price": "₹12,500/night"},
+            {"name": "Taj Mahal Hotel", "price": "₹9,800/night"},
+            {"name": "ITC Maurya", "price": "₹11,200/night"},
+        ],
         "DEL": [
             {"name": "The Leela Palace New Delhi", "price": "₹12,500/night"},
             {"name": "Taj Mahal Hotel", "price": "₹9,800/night"},
