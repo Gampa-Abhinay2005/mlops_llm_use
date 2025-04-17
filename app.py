@@ -121,11 +121,6 @@ if st.session_state.selected_city:
     source_display = st.selectbox("Select your departure city:", cities)
     source_code = airport_codes[source_display]
     if st.button("Search Flights"):
-        logger.info(
-            "Searching flights: from %s to %s on %s",
-            source_display,
-            selected_city_display,
-        )
         with st.spinner("Searching for flights..."):
             try:
                 flights_resp = requests.get(
